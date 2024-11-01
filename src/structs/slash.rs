@@ -107,6 +107,26 @@ impl<U, E> Clone for ContextMenuCommandAction<U, E> {
     }
 }
 
+/// An enum to hold the different limits a CommandParameter may have.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum ValueLimits {
+    /// Used if the CommandParameter is a string.
+    Length {
+        /// See [`serenity::CreateCommandOption::min_length`]
+        min: Option<u16>,
+        /// See [`serenity::CreateCommandOption::max_length`]
+        max: Option<u16>,
+    },
+    /// Used if the CommandParameter is an integer or number.
+    Value {
+        /// See [`serenity::CreateCommandOption::min_number_value`]
+        min: Option<f64>,
+        /// See [`serenity::CreateCommandOption::max_number_value`]
+        max: Option<f64>,
+    },
+}
+
 /// A single drop-down choice in a slash command choice parameter
 #[derive(Debug, Clone)]
 pub struct CommandParameterChoice {
@@ -138,13 +158,15 @@ pub struct CommandParameter<U, E> {
     pub channel_types: Option<Vec<serenity::ChannelType>>,
     /// If this parameter is a choice parameter, this is the fixed list of options
     pub choices: Vec<CommandParameterChoice>,
+    /// For String or Number argument types, this contains the limits.
+    pub value_limits: Option<ValueLimits>,
     /// Closure that sets this parameter's type and min/max value in the given builder
     ///
     /// For example a u32 [`CommandParameter`] would store this as the [`Self::type_setter`]:
     /// ```rust
     /// # use poise::serenity_prelude as serenity;
     /// # let _: fn(serenity::CreateCommandOption) -> serenity::CreateCommandOption =
-    /// |b| b.kind(serenity::CommandOptionType::Integer).min_int_value(0).max_int_value(u64::MAX)
+    /// |b| b.kind(serenity::CommandOptionType::Integer)
     /// # ;
     /// ```
     #[derivative(Debug = "ignore")]
