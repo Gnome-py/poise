@@ -46,13 +46,11 @@ impl<T: ChoiceParameter> crate::SlashArgument for T {
         })
     }
 
-    fn create(builder: serenity::CreateCommandOption) -> serenity::CreateCommandOption {
-        builder.kind(serenity::CommandOptionType::Integer)
-    }
-
     fn choices() -> Vec<crate::CommandParameterChoice> {
         Self::list()
     }
+
+    const ARGUMENT_TYPE: serenity::CommandOptionType = serenity::CommandOptionType::Integer;
 }
 
 #[async_trait::async_trait]

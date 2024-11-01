@@ -17,16 +17,13 @@ pub trait SlashArgument: Sized {
         value: &serenity::ResolvedValue<'_>,
     ) -> Result<Self, SlashArgError>;
 
-    /// Create a slash command parameter equivalent to type T.
-    ///
-    /// Only fields about the argument type are filled in. The caller is still responsible for
-    /// filling in `name()`, `description()`, and possibly `required()` or other fields.
-    fn create(builder: serenity::CreateCommandOption) -> serenity::CreateCommandOption;
-
     /// If this is a choice parameter, returns the choices
     fn choices() -> Vec<crate::CommandParameterChoice> {
         Vec::new()
     }
+
+    /// The type of the Argument
+    const ARGUMENT_TYPE: serenity::CommandOptionType;
 }
 
 /// Converts a Command value via serenity's ArgumentConvert trait
@@ -74,9 +71,7 @@ macro_rules! impl_for_argumentconvert {
                 extract_via_argumentconvert::<$type>(ctx, interaction, value).await
             }
 
-            fn create(builder: serenity::CreateCommandOption) -> serenity::CreateCommandOption {
-                builder.kind(serenity::CommandOptionType::String)
-            }
+            const ARGUMENT_TYPE: serenity::CommandOptionType = serenity::CommandOptionType::String;
         }
     };
 }
@@ -105,12 +100,7 @@ macro_rules! impl_for_integer {
                 }
             }
 
-            fn create(builder: serenity::CreateCommandOption) -> serenity::CreateCommandOption {
-                builder
-                    .min_number_value(f64::max(<$t>::MIN as f64, -9007199254740991.))
-                    .max_number_value(f64::min(<$t>::MAX as f64, 9007199254740991.))
-                    .kind(serenity::CommandOptionType::Integer)
-            }
+            const ARGUMENT_TYPE: serenity::CommandOptionType = serenity::CommandOptionType::Integer;
         }
     )* };
 }
@@ -135,9 +125,7 @@ macro_rules! impl_slash_argument {
                 }
             }
 
-            fn create(builder: serenity::CreateCommandOption) -> serenity::CreateCommandOption {
-                builder.kind(serenity::CommandOptionType::$slash_param_type)
-            }
+            const ARGUMENT_TYPE: serenity::CommandOptionType = serenity::CommandOptionType::$slash_param_type;
         }
     };
 }

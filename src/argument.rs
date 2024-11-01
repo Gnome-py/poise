@@ -15,10 +15,6 @@ where
     T: FromStr,
     T::Err: std::error::Error + Send + Sync + 'static,
 {
-    fn create(builder: serenity::CreateCommandOption) -> serenity::CreateCommandOption {
-        builder.kind(serenity::CommandOptionType::String)
-    }
-
     async fn extract(
         _: &serenity::Context,
         _: &serenity::CommandInteraction,
@@ -38,6 +34,8 @@ where
             }),
         }
     }
+
+    const ARGUMENT_TYPE: serenity::CommandOptionType = serenity::CommandOptionType::String;
 }
 
 #[async_trait::async_trait]

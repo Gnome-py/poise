@@ -160,17 +160,8 @@ pub struct CommandParameter<U, E> {
     pub choices: Vec<CommandParameterChoice>,
     /// For String or Number argument types, this contains the limits.
     pub value_limits: Option<ValueLimits>,
-    /// Closure that sets this parameter's type and min/max value in the given builder
-    ///
-    /// For example a u32 [`CommandParameter`] would store this as the [`Self::type_setter`]:
-    /// ```rust
-    /// # use poise::serenity_prelude as serenity;
-    /// # let _: fn(serenity::CreateCommandOption) -> serenity::CreateCommandOption =
-    /// |b| b.kind(serenity::CommandOptionType::Integer)
-    /// # ;
-    /// ```
-    #[derivative(Debug = "ignore")]
-    pub type_setter: Option<fn(serenity::CreateCommandOption) -> serenity::CreateCommandOption>,
+    /// The type that this argument will be sent to discord as. (slash-only)
+    pub type_: serenity::CommandOptionType,
     /// Optionally, a callback that is invoked on autocomplete interactions. This closure should
     /// extract the partial argument from the given JSON value and generate the autocomplete
     /// response which contains the list of autocomplete suggestions.
@@ -194,11 +185,8 @@ impl<U, E> CommandParameter<U, E> {
             .as_deref()
             .unwrap_or("A slash command parameter");
 
-        let mut builder = serenity::CreateCommandOption::new(
-            serenity::CommandOptionType::String,
-            self.name.clone(),
-            description,
-        );
+        let mut builder =
+            serenity::CreateCommandOption::new(self.type_, self.name.clone(), description);
 
         builder = builder
             .required(self.required)
@@ -218,6 +206,6 @@ impl<U, E> CommandParameter<U, E> {
                 builder.add_int_choice_localized(&choice.name, i as _, choice.localizations.iter());
         }
 
-        Some((self.type_setter?)(builder))
+        Some(builder)
     }
 }

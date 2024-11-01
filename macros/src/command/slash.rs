@@ -77,20 +77,17 @@ pub fn generate_parameters(inv: &Invocation) -> Result<Vec<proc_macro2::TokenStr
         };
 
         let value_limits = wrap_option(generate_value_limits(&param.args, param.span)?);
-
-        let type_setter = match inv.args.slash_command {
-            true => {
-                if let Some(_choices) = &param.args.choices {
-                    quote! { Some(|o| o.kind(::poise::serenity_prelude::CommandOptionType::Integer)) }
-                } else {
-                    quote! { Some(|o| <#type_ as poise::SlashArgument>::create(o)) }
-                }
+        let option_type = if inv.args.slash_command {
+            if let Some(_choices) = &param.args.choices {
+                quote! {::poise::serenity_prelude::CommandOptionType::Integer}
+            } else {
+                quote! {<#type_ as ::poise::SlashArgument>::ARGUMENT_TYPE}
             }
-            false => quote! { None },
+        } else {
+            quote! { ::poise::serenity_prelude::CommandOptionType::String }
         };
 
         // TODO: theoretically a problem that we don't store choices for non slash commands
-        // TODO: move this to poise::CommandParameter::choices (is there a reason not to?)
         let choices = match inv.args.slash_command {
             true => {
                 if let Some(choices) = &param.args.choices {
@@ -124,7 +121,7 @@ pub fn generate_parameters(inv: &Invocation) -> Result<Vec<proc_macro2::TokenStr
                     required: #required,
                     channel_types: #channel_types,
                     value_limits: #value_limits,
-                    type_setter: #type_setter,
+                    type_: #option_type,
                     choices: #choices,
                     autocomplete_callback: #autocomplete_callback,
                     __non_exhaustive: (),
