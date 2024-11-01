@@ -128,5 +128,6 @@ impl_popargument_via_argumentconvert!(
     u8, u16, u32, u64,
     i8, i16, i32, i64,
     serenity::User,
+    serenity::Member,
     serenity::Message
 );
