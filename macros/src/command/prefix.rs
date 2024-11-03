@@ -37,7 +37,7 @@ fn quote_parameter(p: &super::CommandParameter) -> Result<proc_macro2::TokenStre
     })
 }
 
-pub fn generate_prefix_action(inv: &Invocation) -> Result<proc_macro2::TokenStream, syn::Error> {
+fn generate_prefix_action(inv: &Invocation) -> Result<proc_macro2::TokenStream, syn::Error> {
     let param_idents = (0..inv.parameters.len())
         .map(|i| format_ident!("poise_param_{i}"))
         .collect::<Vec<_>>();
@@ -75,4 +75,22 @@ pub fn generate_prefix_action(inv: &Invocation) -> Result<proc_macro2::TokenStre
                 ))
         })
     })
+}
+
+pub fn generate_prefix_command(inv: &Invocation) -> Result<proc_macro2::TokenStream, syn::Error> {
+    let action = generate_prefix_action(inv)?;
+
+    let aliases = &inv.args.aliases.0;
+    let invoke_on_edit = inv.args.invoke_on_edit;
+    let track_deletion = inv.args.track_deletion;
+    let broadcast_typing = inv.args.broadcast_typing;
+    Ok(quote::quote!(
+        ::poise::PrefixCommand {
+            action: #action,
+            aliases: vec![#(#aliases.to_string()),*],
+            invoke_on_edit: #invoke_on_edit,
+            track_deletion: #track_deletion,
+            broadcast_typing: #broadcast_typing
+        }
+    ))
 }

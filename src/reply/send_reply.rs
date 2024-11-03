@@ -141,8 +141,14 @@ pub async fn send_prefix_reply<U, E>(
 
         // If the entry still exists after the await, update it to the new contents
         // We don't check ctx.command.reuse_response because it's true anyways in this branch
-        if let Some(mut edit_tracker) = lock_edit_tracker() {
-            edit_tracker.set_bot_response(ctx.msg, response.clone(), ctx.command.track_deletion);
+        if let Some(prefix_info) = ctx.command.prefix_info.as_ref() {
+            if let Some(mut edit_tracker) = lock_edit_tracker() {
+                edit_tracker.set_bot_response(
+                    ctx.msg,
+                    response.clone(),
+                    prefix_info.track_deletion,
+                );
+            }
         }
 
         response
@@ -154,8 +160,14 @@ pub async fn send_prefix_reply<U, E>(
             .await?;
         // We don't check ctx.command.reuse_response because we need to store bot responses for
         // track_deletion too
-        if let Some(track_edits) = &mut lock_edit_tracker() {
-            track_edits.set_bot_response(ctx.msg, new_response.clone(), ctx.command.track_deletion);
+        if let Some(prefix_info) = ctx.command.prefix_info.as_ref() {
+            if let Some(track_edits) = &mut lock_edit_tracker() {
+                track_edits.set_bot_response(
+                    ctx.msg,
+                    new_response.clone(),
+                    prefix_info.track_deletion,
+                );
+            }
         }
 
         new_response

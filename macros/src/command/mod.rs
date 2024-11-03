@@ -1,9 +1,8 @@
+mod context_menu;
 mod prefix;
 mod slash;
 
-use crate::util::{
-    iter_tuple_2_to_hash_map, wrap_option, wrap_option_and_map, wrap_option_to_string,
-};
+use crate::util::{wrap_option, wrap_option_and_map, wrap_option_to_string};
 use proc_macro::TokenStream;
 use syn::spanned::Spanned as _;
 
@@ -243,16 +242,16 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
     let ctx_type_with_static =
         syn::fold::fold_type(&mut crate::util::AllLifetimesToStatic, ctx_type.clone());
 
-    let prefix_action = wrap_option(match inv.args.prefix_command {
-        true => Some(prefix::generate_prefix_action(&inv)?),
+    let prefix_info = wrap_option(match inv.args.prefix_command {
+        true => Some(prefix::generate_prefix_command(&inv)?),
         false => None,
     });
-    let slash_action = wrap_option(match inv.args.slash_command {
-        true => Some(slash::generate_slash_action(&inv)?),
+    let slash_info = wrap_option(match inv.args.slash_command {
+        true => Some(slash::generate_slash_command(&mut inv)?),
         false => None,
     });
-    let context_menu_action = wrap_option(match &inv.args.context_menu_command {
-        Some(_) => Some(slash::generate_context_menu_action(&inv)?),
+    let context_menu_info = wrap_option(match &inv.args.context_menu_command {
+        Some(_) => Some(context_menu::generate_context_menu_command(&inv)?),
         None => None,
     });
 
@@ -282,7 +281,6 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
 
     let cooldown_config = generate_cooldown_config(&inv.args);
 
-    let default_member_permissions = &inv.default_member_permissions;
     let required_permissions = &inv.required_permissions;
     let required_bot_permissions = &inv.required_bot_permissions;
     let subcommand_required = inv.args.subcommand_required;
@@ -320,10 +318,6 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
         None => quote::quote! { Box::new(()) },
     };
 
-    let name_localizations = iter_tuple_2_to_hash_map(inv.args.name_localized.into_iter());
-    let description_localizations =
-        iter_tuple_2_to_hash_map(inv.args.description_localized.into_iter());
-
     let function_ident =
         std::mem::replace(&mut inv.function.sig.ident, syn::parse_quote! { inner });
     let function_generics = &inv.function.sig.generics;
@@ -338,26 +332,23 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
             #function
 
             ::poise::Command {
-                prefix_action: #prefix_action,
-                slash_action: #slash_action,
-                context_menu_action: #context_menu_action,
+                prefix_info: #prefix_info,
+                slash_info: #slash_info,
+                context_menu_info: #context_menu_info,
 
                 subcommands: vec![ #( #subcommands() ),* ],
                 subcommand_required: #subcommand_required,
                 name: #command_name.to_string(),
-                name_localizations: #name_localizations,
                 qualified_name: String::from(#command_name), // properly filled in later by Framework
                 identifying_name: String::from(#identifying_name),
                 source_code_name: String::from(#function_name),
                 category: #category,
                 description: #description,
-                description_localizations: #description_localizations,
                 help_text: #help_text,
                 hide_in_help: #hide_in_help,
                 cooldowns: std::sync::Mutex::new(::poise::Cooldowns::new()),
                 cooldown_config: #cooldown_config,
                 reuse_response: #reuse_response,
-                default_member_permissions: #default_member_permissions,
                 required_permissions: #required_permissions,
                 required_bot_permissions: #required_bot_permissions,
                 owners_only: #owners_only,

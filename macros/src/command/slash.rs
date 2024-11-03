@@ -138,7 +138,7 @@ pub fn generate_parameters(inv: &Invocation) -> Result<Vec<proc_macro2::TokenStr
         .collect::<Vec<_>>())
 }
 
-pub fn generate_slash_action(inv: &Invocation) -> Result<proc_macro2::TokenStream, syn::Error> {
+fn generate_slash_action(inv: &Invocation) -> Result<proc_macro2::TokenStream, syn::Error> {
     if let Some(desc) = &inv.description {
         if desc.len() > 100 {
             return Err(syn::Error::new(
@@ -198,33 +198,24 @@ pub fn generate_slash_action(inv: &Invocation) -> Result<proc_macro2::TokenStrea
     })
 }
 
-pub fn generate_context_menu_action(
-    inv: &Invocation,
+pub fn generate_slash_command(
+    inv: &mut Invocation,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
-    let param_type = match &*inv.parameters {
-        [single_param] => &single_param.type_,
-        _ => {
-            return Err(syn::Error::new(
-                inv.function.sig.inputs.span(),
-                "Context menu commands require exactly one parameter",
-            ))
+    let action = generate_slash_action(inv)?;
+    let ephemeral = &inv.args.ephemeral;
+    let default_member_permissions = &inv.default_member_permissions;
+
+    let name_localizations = iter_tuple_2_to_hash_map(inv.args.name_localized.drain(..));
+    let description_localizations =
+        iter_tuple_2_to_hash_map(inv.args.description_localized.drain(..));
+
+    Ok(quote!(
+        ::poise::SlashCommand {
+            action: #action,
+            ephemeral: #ephemeral,
+            name_localizations: #name_localizations,
+            description_localizations: #description_localizations,
+            default_member_permissions: #default_member_permissions,
         }
-    };
-
-    Ok(quote! {
-        <#param_type as ::poise::ContextMenuParameter<_, _>>::to_action(|ctx, value| {
-            Box::pin(async move {
-                if !ctx.framework.options.manual_cooldowns {
-                    ctx.command.cooldowns.lock().unwrap().start_cooldown(ctx.cooldown_context());
-                }
-
-                inner(ctx.into(), value)
-                    .await
-                    .map_err(|error| poise::FrameworkError::new_command(
-                        ctx.into(),
-                        error,
-                    ))
-            })
-        })
-    })
+    ))
 }

@@ -56,9 +56,9 @@ async fn pretty_help_all_commands<U, E>(
 ) -> Result<(), serenity::Error> {
     let commands = ctx.framework().options().commands.iter().filter(|cmd| {
         !cmd.hide_in_help
-            && (cmd.prefix_action.is_some()
-                || cmd.slash_action.is_some()
-                || (cmd.context_menu_action.is_some() && config.show_context_menu_commands))
+            && (cmd.prefix_info.is_some()
+                || cmd.slash_info.is_some()
+                || (cmd.context_menu_info.is_some() && config.show_context_menu_commands))
     });
 
     let mut categories = indexmap::IndexMap::<Option<&str>, Vec<&crate::Command<U, E>>>::new();
@@ -76,12 +76,12 @@ async fn pretty_help_all_commands<U, E>(
         .filter(|(_, cmds)| !cmds.is_empty())
         .map(|(category, mut cmds)| {
             // get context menu items at the bottom
-            cmds.sort_by_key(|cmd| cmd.slash_action.is_none() && cmd.prefix_action.is_none());
+            cmds.sort_by_key(|cmd| cmd.slash_info.is_none() && cmd.prefix_info.is_none());
 
             let mut buffer = String::new();
 
             for cmd in cmds {
-                let name = cmd.context_menu_name.as_deref().unwrap_or(&cmd.name);
+                let name = cmd.context_menu_info.unwrap_or(&cmd.name);
                 let prefix = format_cmd_prefix(cmd, options_prefix.as_deref());
 
                 if let Some(description) = cmd.description.as_deref() {
@@ -92,7 +92,7 @@ async fn pretty_help_all_commands<U, E>(
 
                 if config.show_subcommands {
                     for sbcmd in &cmd.subcommands {
-                        let name = sbcmd.context_menu_name.as_deref().unwrap_or(&sbcmd.name);
+                        let name = sbcmd.context_menu_info.as_deref().unwrap_or(&sbcmd.name);
                         let prefix = format_cmd_prefix(sbcmd, options_prefix.as_deref());
 
                         if let Some(description) = sbcmd.description.as_deref() {
@@ -129,17 +129,15 @@ async fn pretty_help_all_commands<U, E>(
 
 /// Figures out which prefix a command should have
 fn format_cmd_prefix<U, E>(cmd: &crate::Command<U, E>, options_prefix: Option<&str>) -> String {
-    if cmd.slash_action.is_some() {
+    if cmd.slash_info.is_some() {
         "`/".into()
-    } else if cmd.prefix_action.is_some() {
+    } else if cmd.prefix_info.is_some() {
         format!("`{}", options_prefix.unwrap_or_default())
-    } else if cmd.context_menu_action.is_some() {
-        match cmd.context_menu_action {
-            Some(crate::ContextMenuCommandAction::Message(_)) => "Message menu: `".into(),
-            Some(crate::ContextMenuCommandAction::User(_)) => "User menu: `".into(),
-            Some(crate::ContextMenuCommandAction::__NonExhaustive) | None => {
-                unreachable!()
-            }
+    } else if let Some(context_info) = &cmd.context_menu_info {
+        match context_info.action {
+            crate::ContextMenuCommandAction::Message(_) => "Message menu: `".into(),
+            crate::ContextMenuCommandAction::User(_) => "User menu: `".into(),
+            crate::ContextMenuCommandAction::__NonExhaustive => unreachable!(),
         }
     } else {
         "`".into()

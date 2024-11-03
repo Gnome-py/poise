@@ -104,19 +104,18 @@ pub(super) async fn get_prefix_from_options<U, E>(
 }
 
 /// Format context menu command name
-fn format_context_menu_name<U, E>(command: &crate::Command<U, E>) -> Option<String> {
-    let kind = match command.context_menu_action {
-        Some(crate::ContextMenuCommandAction::User(_)) => "user",
-        Some(crate::ContextMenuCommandAction::Message(_)) => "message",
-        Some(crate::ContextMenuCommandAction::__NonExhaustive) => unreachable!(),
-        None => return None,
+fn format_context_menu_name<U, E>(
+    command_name: &str,
+    context_info: &crate::ContextMenuCommand<U, E>,
+) -> Option<String> {
+    let kind = match context_info.action {
+        crate::ContextMenuCommandAction::User(_) => "user",
+        crate::ContextMenuCommandAction::Message(_) => "message",
+        crate::ContextMenuCommandAction::__NonExhaustive => unreachable!(),
     };
     Some(format!(
         "{} (on {})",
-        command
-            .context_menu_name
-            .as_deref()
-            .unwrap_or(&command.name),
+        context_info.name.as_deref().unwrap_or(command_name),
         kind
     ))
 }
@@ -130,9 +129,11 @@ async fn help_single_command<U, E>(
     let commands = &ctx.framework().options().commands;
     // Try interpret the command name as a context menu command first
     let mut command = commands.iter().find(|command| {
-        if let Some(context_menu_name) = &command.context_menu_name {
-            if context_menu_name.eq_ignore_ascii_case(command_name) {
-                return true;
+        if let Some(context_info) = &command.context_menu_info.as_ref() {
+            if let Some(context_menu_name) = &context_info.name {
+                if context_menu_name.eq_ignore_ascii_case(command_name) {
+                    return true;
+                }
             }
         }
         false
@@ -147,11 +148,11 @@ async fn help_single_command<U, E>(
     let reply = if let Some(command) = command {
         let mut invocations = Vec::new();
         let mut subprefix = None;
-        if command.slash_action.is_some() {
+        if command.slash_info.is_some() {
             invocations.push(format!("`/{}`", command.name));
             subprefix = Some(format!("  /{}", command.name));
         }
-        if command.prefix_action.is_some() {
+        if command.prefix_info.is_some() {
             let prefix = match get_prefix_from_options(ctx).await {
                 Some(prefix) => prefix,
                 // None can happen if the prefix is dynamic, and the callback
@@ -164,9 +165,9 @@ async fn help_single_command<U, E>(
                 subprefix = Some(format!("  {}{}", prefix, command.name));
             }
         }
-        if command.context_menu_name.is_some() && command.context_menu_action.is_some() {
+        if let Some(context_info) = &command.context_menu_info {
             // Since command.context_menu_action is Some, this unwrap is safe
-            invocations.push(format_context_menu_name(command).unwrap());
+            invocations.push(format_context_menu_name(&command.name, context_info).unwrap());
             if subprefix.is_none() {
                 subprefix = Some(String::from("  "));
             }
@@ -241,14 +242,14 @@ fn preformat_subcommands<U, E>(
     command: &crate::Command<U, E>,
     prefix: &str,
 ) {
-    let as_context_command = command.slash_action.is_none() && command.prefix_action.is_none();
     for subcommand in &command.subcommands {
-        let command = if as_context_command {
-            let name = format_context_menu_name(subcommand);
-            if name.is_none() {
+        let command = if let Some(context_info) = &command.context_menu_info {
+            let name = format_context_menu_name(&command.name, context_info);
+            let Some(name) = name else {
                 continue;
             };
-            name.unwrap()
+
+            name
         } else {
             format!("{} {}", prefix, subcommand.name)
         };
@@ -268,9 +269,9 @@ fn preformat_command<U, E>(
     indent: &str,
     options_prefix: Option<&str>,
 ) {
-    let prefix = if command.slash_action.is_some() {
+    let prefix = if command.slash_info.is_some() {
         String::from("/")
-    } else if command.prefix_action.is_some() {
+    } else if command.prefix_info.is_some() {
         options_prefix.map(String::from).unwrap_or_default()
     } else {
         // This is not a prefix or slash command, i.e. probably a context menu only command
@@ -312,7 +313,7 @@ async fn generate_all_commands<U, E>(
         let commands = commands
             .into_iter()
             .filter(|cmd| {
-                !cmd.hide_in_help && (cmd.prefix_action.is_some() || cmd.slash_action.is_some())
+                !cmd.hide_in_help && (cmd.prefix_info.is_some() || cmd.prefix_info.is_some())
             })
             .collect::<Vec<_>>();
         if commands.is_empty() {
@@ -335,11 +336,11 @@ async fn generate_all_commands<U, E>(
         menu += "\nContext menu commands:\n";
 
         for command in &ctx.framework().options().commands {
-            let name = format_context_menu_name(command);
-            if name.is_none() {
-                continue;
-            };
-            let _ = writeln!(menu, "  {}", name.unwrap());
+            if let Some(context_info) = &command.context_menu_info {
+                if let Some(name) = format_context_menu_name(&command.name, context_info) {
+                    writeln!(menu, "  {name}");
+                }
+            }
         }
     }
 

@@ -7,26 +7,6 @@ use crate::{serenity_prelude as serenity, BoxFuture};
 #[derive(derivative::Derivative)]
 #[derivative(Default(bound = ""), Debug(bound = ""))]
 pub struct Command<U, E> {
-    // =============
-    /// Callback to execute when this command is invoked in a prefix context
-    #[derivative(Debug = "ignore")]
-    pub prefix_action: Option<
-        for<'a> fn(
-            crate::PrefixContext<'a, U, E>,
-        ) -> BoxFuture<'a, Result<(), crate::FrameworkError<'a, U, E>>>,
-    >,
-    /// Callback to execute when this command is invoked in a slash context
-    #[derivative(Debug = "ignore")]
-    pub slash_action: Option<
-        for<'a> fn(
-            crate::ApplicationContext<'a, U, E>,
-        ) -> BoxFuture<'a, Result<(), crate::FrameworkError<'a, U, E>>>,
-    >,
-    /// Callback to execute when this command is invoked in a context menu context
-    ///
-    /// The enum variant shows which Discord item this context menu command works on
-    pub context_menu_action: Option<crate::ContextMenuCommandAction<U, E>>,
-
     // ============= Command type agnostic data
     /// Subcommands of this command, if any
     pub subcommands: Vec<Command<U, E>>,
@@ -34,8 +14,6 @@ pub struct Command<U, E> {
     pub subcommand_required: bool,
     /// Main name of the command. Aliases (prefix-only) can be set in [`Self::aliases`].
     pub name: String,
-    /// Localized names with locale string as the key (slash-only)
-    pub name_localizations: std::collections::HashMap<String, String>,
     /// Full name including parent command names.
     ///
     /// Initially set to just [`Self::name`] and properly populated when the framework is started.
@@ -53,8 +31,6 @@ pub struct Command<U, E> {
     pub hide_in_help: bool,
     /// Short description of the command. Displayed inline in help menus and similar.
     pub description: Option<String>,
-    /// Localized descriptions with locale string as the key (slash-only)
-    pub description_localizations: std::collections::HashMap<String, String>,
     /// Multiline description with detailed usage instructions. Displayed in the command specific
     /// help: `~help command_name`
     pub help_text: Option<String>,
@@ -68,11 +44,6 @@ pub struct Command<U, E> {
     /// Note: in prefix commands, this only has an effect if
     /// `crate::PrefixFrameworkOptions::edit_tracker` is set.
     pub reuse_response: bool,
-    /// Permissions which users must have to invoke this command. Used by Discord to set who can
-    /// invoke this as a slash command. Not used on prefix commands or checked internally.
-    ///
-    /// Set to [`serenity::Permissions::empty()`] by default
-    pub default_member_permissions: serenity::Permissions,
     /// Permissions which users must have to invoke this command. This is checked internally and
     /// works for both prefix commands and slash commands.
     ///
@@ -107,25 +78,68 @@ pub struct Command<U, E> {
     #[derivative(Default(value = "Box::new(())"))]
     pub custom_data: Box<dyn std::any::Any + Send + Sync>,
 
-    // ============= Prefix-specific data
-    /// Alternative triggers for the command (prefix-only)
-    pub aliases: Vec<String>,
-    /// Whether to rerun the command if an existing invocation message is edited (prefix-only)
-    pub invoke_on_edit: bool,
-    /// Whether to delete the bot response if an existing invocation message is deleted (prefix-only)
-    pub track_deletion: bool,
-    /// Whether to broadcast a typing indicator while executing this commmand (prefix-only)
-    pub broadcast_typing: bool,
-
-    // ============= Application-specific data
-    /// Context menu specific name for this command, displayed in Discord's context menu
-    pub context_menu_name: Option<String>,
-    /// Whether responses to this command should be ephemeral by default (application-only)
-    pub ephemeral: bool,
+    // ============= Mode-specific data
+    #[derivative(Default(value = "None"))]
+    pub prefix_info: Option<PrefixCommand<U, E>>,
+    #[derivative(Default(value = "None"))]
+    pub slash_info: Option<SlashCommand<U, E>>,
+    #[derivative(Default(value = "None"))]
+    pub context_menu_info: Option<ContextMenuCommand<U, E>>,
 
     // Like #[non_exhaustive], but #[poise::command] still needs to be able to create an instance
     #[doc(hidden)]
     pub __non_exhaustive: (),
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""))]
+struct PrefixCommand<U, E> {
+    /// Callback to execute when this command is invoked in a prefix context
+    #[derivative(Debug = "ignore")]
+    pub action: for<'a> fn(
+        crate::PrefixContext<'a, U, E>,
+    ) -> BoxFuture<'a, Result<(), crate::FrameworkError<'a, U, E>>>,
+    /// Alternative triggers for the command
+    pub aliases: Vec<String>,
+    /// Whether to rerun the command if an existing invocation message is edited
+    pub invoke_on_edit: bool,
+    /// Whether to delete the bot response if an existing invocation message is deleted
+    pub track_deletion: bool,
+    /// Whether to broadcast a typing indicator while executing this commmand
+    pub broadcast_typing: bool,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""))]
+pub struct SlashCommand<U, E> {
+    /// Callback to execute when this command is invoked in a slash context
+    #[derivative(Debug = "ignore")]
+    pub action: for<'a> fn(
+        crate::ApplicationContext<'a, U, E>,
+    ) -> BoxFuture<'a, Result<(), crate::FrameworkError<'a, U, E>>>,
+
+    /// Localized names with locale string as the key
+    pub name_localizations: std::collections::HashMap<String, String>,
+    /// Localized descriptions with locale string as the key
+    pub description_localizations: std::collections::HashMap<String, String>,
+    /// Permissions which users must have to invoke this command. Used by Discord to set who can
+    /// invoke this as a slash command. Not used on prefix commands or checked internally.
+    ///
+    /// Set to [`serenity::Permissions::empty()`] by default
+    pub default_member_permissions: serenity::Permissions,
+    /// Whether responses to this command should be ephemeral by default
+    pub ephemeral: bool,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""))]
+pub struct ContextMenuCommand<U, E> {
+    /// Callback to execute when this command is invoked in a context menu context
+    ///
+    /// The enum variant shows which Discord item this context menu command works on
+    pub action: crate::ContextMenuCommandAction<U, E>,
+    /// Context menu specific name for this command, displayed in Discord's context menu
+    pub name: Option<String>,
 }
 
 impl<U, E> PartialEq for Command<U, E> {
@@ -139,8 +153,7 @@ impl<U, E> Command<U, E> {
     /// Serializes this Command into an application command option, which is the form which Discord
     /// requires subcommands to be in
     fn create_as_subcommand(&self) -> Option<serenity::CreateCommandOption> {
-        self.slash_action?;
-
+        let slash_info = self.slash_info.as_ref()?;
         let kind = if self.subcommands.is_empty() {
             serenity::CommandOptionType::SubCommand
         } else {
@@ -150,10 +163,10 @@ impl<U, E> Command<U, E> {
         let description = self.description.as_deref().unwrap_or("A slash command");
         let mut builder = serenity::CreateCommandOption::new(kind, self.name.clone(), description);
 
-        for (locale, name) in &self.name_localizations {
+        for (locale, name) in &slash_info.name_localizations {
             builder = builder.name_localized(locale, name);
         }
-        for (locale, description) in &self.description_localizations {
+        for (locale, description) in &slash_info.description_localizations {
             builder = builder.description_localized(locale, description);
         }
 
@@ -177,22 +190,22 @@ impl<U, E> Command<U, E> {
     /// Generates a slash command builder from this [`Command`] instance. This can be used
     /// to register this command on Discord's servers
     pub fn create_as_slash_command(&self) -> Option<serenity::CreateCommand> {
-        self.slash_action?;
+        let app_info = self.slash_info.as_ref()?;
 
         let mut builder = serenity::CreateCommand::new(self.name.clone())
             .description(self.description.as_deref().unwrap_or("A slash command"));
 
-        for (locale, name) in &self.name_localizations {
+        for (locale, name) in &app_info.name_localizations {
             builder = builder.name_localized(locale, name);
         }
-        for (locale, description) in &self.description_localizations {
+        for (locale, description) in &app_info.description_localizations {
             builder = builder.description_localized(locale, description);
         }
 
         // This is_empty check is needed because Discord special cases empty
         // default_member_permissions to mean "admin-only" (yes it's stupid)
-        if !self.default_member_permissions.is_empty() {
-            builder = builder.default_member_permissions(self.default_member_permissions);
+        if !app_info.default_member_permissions.is_empty() {
+            builder = builder.default_member_permissions(app_info.default_member_permissions);
         }
 
         if self.guild_only {
@@ -219,11 +232,11 @@ impl<U, E> Command<U, E> {
     /// Generates a context menu command builder from this [`Command`] instance. This can be used
     /// to register this command on Discord's servers
     pub fn create_as_context_menu_command(&self) -> Option<serenity::CreateCommand> {
-        let context_menu_action = self.context_menu_action?;
+        let context_menu_info = self.context_menu_info.as_ref()?;
 
         // TODO: localization?
-        let name = self.context_menu_name.as_deref().unwrap_or(&self.name);
-        let mut builder = serenity::CreateCommand::new(name).kind(match context_menu_action {
+        let name = context_menu_info.name.as_deref().unwrap_or(&self.name);
+        let mut builder = serenity::CreateCommand::new(name).kind(match context_menu_info.action {
             crate::ContextMenuCommandAction::User(_) => serenity::CommandType::User,
             crate::ContextMenuCommandAction::Message(_) => serenity::CommandType::Message,
             crate::ContextMenuCommandAction::__NonExhaustive => unreachable!(),
