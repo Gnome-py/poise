@@ -1228,6 +1228,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ref-cast"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccf0a6f84d5f1d581da8b41b47ec8600871962f2a528115b542b362d4b744931"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcc303e793d3734489387d205e9b186fac9c6cfacedd98cbb2e8a5943595f3e6"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
 name = "regex"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1488,8 +1508,8 @@ dependencies = [
 
 [[package]]
 name = "serenity"
-version = "0.12.3"
-source = "git+https://github.com/serenity-rs/serenity?branch=next#92960175452efe4b8795d8868488d96831607d31"
+version = "0.12.4"
+source = "git+https://github.com/GnomedDev/serenity?branch=thread-split#7eeb8ae8e5ff6ec0053c1e4378bae1afdc16310e"
 dependencies = [
  "aformat",
  "arrayvec",
@@ -1508,6 +1528,7 @@ dependencies = [
  "nonmax",
  "parking_lot",
  "percent-encoding",
+ "ref-cast",
  "reqwest",
  "serde",
  "serde_cow",

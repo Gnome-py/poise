@@ -198,7 +198,7 @@ context_methods! {
 
     /// Return the channel ID of this context
     (channel_id self)
-    (pub fn channel_id(self) -> serenity::ChannelId) {
+    (pub fn channel_id(self) -> serenity::GenericChannelId) {
         match self {
             Self::Application(ctx) => ctx.interaction.channel_id,
             Self::Prefix(ctx) => ctx.msg.channel_id,
@@ -403,7 +403,7 @@ context_methods! {
                         serenity::ResolvedValue::Number(x) => write!(string, "{}", x),
                         serenity::ResolvedValue::String(x) => write!(string, "{}", x),
                         serenity::ResolvedValue::Channel(x) => {
-                            write!(string, "#{}", x.name.as_deref().unwrap_or(""))
+                            write!(string, "#{}", x.base().name.as_deref().unwrap_or(""))
                         }
                         serenity::ResolvedValue::Role(x) => write!(string, "@{}", x.name),
                         serenity::ResolvedValue::User(x, _) => {
@@ -631,7 +631,7 @@ pub struct PartialContext<'a, U, E> {
     /// ID of the guild, if not invoked in DMs
     pub guild_id: Option<serenity::GuildId>,
     /// ID of the invocation channel
-    pub channel_id: serenity::ChannelId,
+    pub channel_id: serenity::GenericChannelId,
     /// ID of the invocation author
     pub author: &'a serenity::User,
     /// Useful if you need the list of commands, for example for a custom help command

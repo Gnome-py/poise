@@ -23,8 +23,8 @@ indexmap = "2.2.6"
 [dependencies.serenity]
 default-features = false
 features = ["builder", "gateway", "model", "utils", "collector", "framework"]
-git = "https://github.com/serenity-rs/serenity"
-branch = "next"
+git = "https://github.com/GnomedDev/serenity"
+branch = "thread-split"
 
 [dev-dependencies]
 # For the examples
