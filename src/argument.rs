@@ -9,7 +9,6 @@ use crate::{
 /// This is useful if you need to take an argument via a string, but immediately convert it via [`FromStr`].
 pub struct StrArg<T>(pub T);
 
-#[async_trait::async_trait]
 impl<T> SlashArgument for StrArg<T>
 where
     T: FromStr,
@@ -40,7 +39,6 @@ where
     }
 }
 
-#[async_trait::async_trait]
 impl<'a, T> PopArgument<'a> for StrArg<T>
 where
     T: FromStr,

@@ -19,20 +19,18 @@ pub(crate) type PopArgumentResult<'a, T> =
 /// does. This is for consistency's sake and also because it keeps open the possibility of parsing whitespace.
 ///
 /// Similar in spirit to [`std::str::FromStr`].
-#[async_trait::async_trait]
 pub trait PopArgument<'a>: Sized {
     /// Pops an argument from the `args` string.
     ///
     /// See the documentation of [`PopArgumentResult`] for the return type.
-    async fn pop_from(
+    fn pop_from(
         args: &'a str,
         attachment_index: usize,
         ctx: &serenity::Context,
         msg: &serenity::Message,
-    ) -> PopArgumentResult<'a, Self>;
+    ) -> impl std::future::Future<Output = PopArgumentResult<'a, Self>>;
 }
 
-#[async_trait::async_trait]
 impl<'a> PopArgument<'a> for String {
     async fn pop_from(
         args: &'a str,
@@ -47,7 +45,6 @@ impl<'a> PopArgument<'a> for String {
     }
 }
 
-#[async_trait::async_trait]
 impl<'a> PopArgument<'a> for bool {
     async fn pop_from(
         args: &'a str,
@@ -68,7 +65,6 @@ impl<'a> PopArgument<'a> for bool {
     }
 }
 
-#[async_trait::async_trait]
 impl<'a> PopArgument<'a> for serenity::Attachment {
     async fn pop_from(
         args: &'a str,
@@ -108,7 +104,6 @@ where
 /// Implements PopArgument for many types via `[pop_from_via_argumentconvert`].
 macro_rules! impl_popargument_via_argumentconvert {
     ($($type:ty),*) => {$(
-        #[async_trait::async_trait]
         impl<'a> PopArgument<'a> for $type {
             async fn pop_from(
                 args: &'a str,

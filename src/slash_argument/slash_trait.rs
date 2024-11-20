@@ -8,14 +8,13 @@ use crate::serenity::json::*;
 use crate::{serenity_prelude as serenity, CowVec};
 
 /// Implement this trait on types that you want to use as a slash command parameter.
-#[async_trait::async_trait]
 pub trait SlashArgument: Sized {
     /// Extract a Rust value of type T from the slash command argument, given via a [`serenity::ResolvedValue`].
-    async fn extract(
+    fn extract(
         ctx: &serenity::Context,
         interaction: &serenity::CommandInteraction,
         value: &serenity::ResolvedValue<'_>,
-    ) -> Result<Self, SlashArgError>;
+    ) -> impl std::future::Future<Output = Result<Self, SlashArgError>>;
 
     /// Create a slash command parameter equivalent to type T.
     ///
@@ -64,7 +63,6 @@ where
 /// Implements `SlashArgument` via `serenity::ArgumentConvert`
 macro_rules! impl_for_argumentconvert {
     ($type:ty) => {
-        #[async_trait::async_trait]
         impl SlashArgument for $type {
             async fn extract(
                 ctx: &serenity::Context,
@@ -86,7 +84,6 @@ impl_for_argumentconvert!(serenity::Message);
 /// Implements slash argument trait for integer types
 macro_rules! impl_for_integer {
     ($($t:ty)*) => { $(
-        #[async_trait::async_trait]
         impl SlashArgument for $t {
             async fn extract(
                 _: &serenity::Context,
@@ -120,7 +117,6 @@ impl_for_integer!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize);
 /// Versatile macro to implement `SlashArgument` for simple types
 macro_rules! impl_slash_argument {
     ($type:ty, |$ctx:pat, $interaction:pat, $slash_param_type:ident ( $($arg:pat),* )| $extractor:expr) => {
-        #[async_trait::async_trait]
         impl SlashArgument for $type {
             async fn extract(
                 $ctx: &serenity::Context,
